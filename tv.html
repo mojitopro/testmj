@@ -45,7 +45,7 @@ option:checked,option:focus,option:selected{background:#0066cc;color:#fff}
 <div class="logo"><span class="sof">SōF</span><span class="mojito"> MoJiTo</span><span class="tv"> TV</span></div>
 <div id="in">Escribe el canal...</div>
 <button id="more" style="display:none;margin-top:10px;padding:10px 20px;background:#8b0000;border:none;color:#fff;cursor:pointer;">MAS STREAMS (+20)</button>
-<div id="msg" class="info">A = Adult Swim | ↑↓ navegar | ENTER reproducir</div>
+<div id="msg" class="info">↑↓ navegar | ENTER reproducir</div>
 <select id="results" size="10" class="hidden"></select>
 </div>
 
@@ -225,7 +225,7 @@ document.addEventListener('keydown',function(e){
         else if(k==='ArrowLeft'){e.preventDefault();var p=parseInt(elVideo.dataset.idx||0)-1;p>=0?playStream(p):log('Inicio lista');}
         return;
     }
-    if(k==='a'||k==='A'){e.preventDefault();enterAdultSwim();return;}
+    if(k==='0'){e.preventDefault();enterAdultSwim();return;}
     if(k==='ArrowDown'){
         e.preventDefault();
         var lim=mode==='search'&&txt.length>0?streams.length-1:favorites.length-1;
@@ -258,7 +258,7 @@ function enterAdultSwim(){
     elSel.selectedIndex=0;
     elSel.style.display='block';
     elSel.size=10;
-    log('Adult Swim - '+ADULT_STREAMS.length+' canales | ENTER reproducir');
+    log('Adult 0 - '+ADULT_STREAMS.length+' canales | ENTER reproducir');
 }
 
 function playAdult(idx){
