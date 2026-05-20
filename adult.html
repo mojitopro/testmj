@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Adult Swim - MoJiTo</title>
+<style>
+*{margin:0;padding:0}
+html,body{width:100%;height:100%;background:#000;color:#fff;font-family:Arial;overflow:hidden}
+#video{width:100%;height:100%;position:fixed;top:0;left:0;display:none;background:#000;z-index:100}
+#menu{padding:20px;height:100%;display:flex;flex-direction:column;align-items:center}
+.logo{font-size:36px;font-weight:bold;text-align:center;margin-bottom:15px}
+.logo span{text-shadow:0 0 10px #00ff88}
+.logo .as{color:#00ff88;text-shadow:0 0 15px #00ff88}
+.channel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;padding:10px;width:100%;overflow-y:auto;flex:1}
+.channel-card{background:#111;border:1px solid #333;border-radius:10px;padding:15px;text-align:center;cursor:pointer;transition:all .2s}
+.channel-card:hover{border-color:#00ff88}
+.channel-card.active{border-color:#00ff88;background:#1a2e1a;box-shadow:0 0 15px rgba(0,255,136,.3)}
+.channel-card h3{font-size:14px;margin-bottom:5px}
+.channel-card .server{font-size:10px;color:#555}
+#msg{padding:10px;color:#00ff88;font-size:14px}
+.ctrl-bar{display:flex;gap:8px;padding:10px;flex-wrap:wrap;justify-content:center}
+.ctrl-btn{background:#1a1a2e;border:1px solid #333;color:#888;padding:8px 15px;border-radius:6px;font-size:12px;cursor:pointer}
+.ctrl-btn:hover{border-color:#00ff88;color:#00ff88}
+.ctrl-btn.green{border-color:#00ff88;color:#00ff88}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#00ff88;display:inline-block;margin-right:5px}
+</style>
+</head>
+<body>
+
+<video id="video" controls playsinline></video>
+
+<div id="menu">
+<div class="logo"><span class="as">ADULT</span> <span>SWIM</span></div>
+<div id="msg">Selecciona un canal para reproducir</div>
+<div class="channel-grid" id="grid"></div>
+<div class="ctrl-bar">
+<button class="ctrl-btn" onclick="prevChannel()">◀</button>
+<button class="ctrl-btn green" onclick="togglePlay()">▶ PLAY</button>
+<button class="ctrl-btn" onclick="nextChannel()">▶</button>
+</div>
+</div>
+
+<script src="hls.min.js"></script>
+<script>
+var channels = [
+    {name: "Adult Swim", server: "Astra", url: "http://181.119.86.1:8000/play/a019"},
+    {name: "Adult Swim", server: "Astra2", url: "http://190.60.59.67:8000/play/a0io"},
+    {name: "Cartoon Network", server: "Astra", url: "http://181.119.86.1:8000/play/a01g"},
+    {name: "Nickelodeon", server: "Astra", url: "http://45.169.163.237:4000/play/a01c"},
+    {name: "Nick Jr", server: "Astra", url: "http://38.41.8.1:8000/play/a0zx"},
+    {name: "Disney Channel", server: "Astra", url: "http://38.41.8.1:8000/play/a0sv"},
+    {name: "Disney XD", server: "Astra", url: "http://38.41.8.1:8000/play/a0rm"},
+    {name: "Discovery Kids", server: "Astra", url: "http://38.41.8.1:8000/play/a0t7"},
+    {name: "HBO", server: "Astra", url: "http://38.187.3.110:8000/play/a07z/index.m3u8"},
+    {name: "HBO 2", server: "Astra", url: "http://45.181.120.65:9087/play/130/index.m3u8"},
+    {name: "HBO Family", server: "Astra", url: "http://45.181.120.65:9087/play/a0gt/index.m3u8"},
+    {name: "HBO Xtreme", server: "Astra", url: "http://45.181.120.65:9087/play/128/index.m3u8"},
+    {name: "Cinemax", server: "Astra", url: "http://38.41.8.1:8000/play/a0rp"},
+    {name: "Star Channel", server: "Astra", url: "http://45.181.120.65:9087/play/109/index.m3u8"},
+    {name: "TNT", server: "Astra", url: "http://38.41.8.1:8000/play/a0sv"},
+    {name: "Space", server: "Astra", url: "http://38.41.8.1:8000/play/a0rm"},
+    {name: "Cinecanal", server: "Astra", url: "http://38.41.8.1:8000/play/a0sx"},
+    {name: "AMC", server: "Astra", url: "http://38.41.8.1:8000/play/a0t3"},
+    {name: "ESPN", server: "Astra", url: "http://38.41.8.1:8000/play/a0t3"},
+    {name: "ESPN 2", server: "Astra", url: "http://38.41.8.1:8000/play/a0rp"},
+    {name: "ESPN 3", server: "Astra", url: "http://38.41.8.1:8000/play/a0sw"},
+    {name: "Fox Sports 1", server: "Astra", url: "http://38.41.8.1:8000/play/a0sw"},
+    {name: "Fox Sports 2", server: "Astra", url: "http://38.41.8.1:8000/play/a0sv"},
+    {name: "Fox Sports 3", server: "Astra", url: "http://38.41.8.1:8000/play/a0rm"},
+    {name: "TNT Sports", server: "Astra", url: "http://38.41.8.1:8000/play/a0sx"},
+    {name: "TyC Sports", server: "Astra", url: "http://38.41.8.1:8000/play/a0zx"},
+    {name: "Win Sports", server: "Astra", url: "http://38.41.8.1:8000/play/a0t3"},
+    {name: "Gol TV", server: "Astra", url: "http://38.41.8.1:8000/play/a0rp"},
+    {name: "Comedy Central", server: "Astra", url: "http://38.41.8.1:8000/play/a0sv"},
+    {name: "MTV", server: "Astra", url: "http://38.41.8.1:8000/play/a0sx"},
+    {name: "VH1", server: "Astra", url: "http://38.41.8.1:8000/play/a0zx"},
+    {name: "Telehit", server: "Astra", url: "http://38.41.8.1:8000/play/a0t7"},
+    {name: "CNN", server: "Astra", url: "http://38.41.8.1:8000/play/a0t3"},
+    {name: "CNN Espanol", server: "Astra", url: "http://38.41.8.1:8000/play/a0rp"},
+    {name: "BBC World", server: "Astra", url: "http://38.41.8.1:8000/play/a0sw"},
+    {name: "DW", server: "Astra", url: "http://38.41.8.1:8000/play/a0sv"},
+    {name: "Discovery Channel", server: "Astra", url: "http://38.41.8.1:8000/play/a0rm"},
+    {name: "Discovery Home", server: "Astra", url: "http://38.41.8.1:8000/play/a0sx"},
+    {name: "Discovery ID", server: "Astra", url: "http://38.41.8.1:8000/play/a0zx"},
+    {name: "History", server: "Astra", url: "http://38.41.8.1:8000/play/a0t7"},
+    {name: "Nat Geo", server: "Astra", url: "http://38.41.8.1:8000/play/a0t3"},
+    {name: "Animal Planet", server: "Astra", url: "http://38.41.8.1:8000/play/a0rp"},
+    {name: "Universal Channel", server: "Astra", url: "http://38.41.8.1:8000/play/a0t3"},
+    {name: "Warner Channel", server: "Astra", url: "http://38.41.8.1:8000/play/a0zx"},
+    {name: "Sony Channel", server: "Astra", url: "http://38.41.8.1:8000/play/a0t7"},
+    {name: "AXN", server: "Astra", url: "http://38.41.8.1:8000/play/a0rp"},
+    {name: "FX", server: "Astra", url: "http://38.41.8.1:8000/play/a0sw"},
+    {name: "TBS", server: "Astra", url: "http://38.41.8.1:8000/play/a0sw"},
+    {name: "MOVIES", server: "Custom", url: "https://30a-tv.com/feeds/pzaz/30atvmovies.m3u8"},
+    {name: "NATIONAL GEOGRAPHIC", server: "Custom", url: "https://live-fi.tvkaista.net/national-geographic/live.m3u8?src=freetv"}
+];
+
+var BACKUP_URLS = {
+    "Adult Swim": ["http://181.119.86.1:8000/play/a019", "http://190.60.59.67:8000/play/a0io"],
+    "Cartoon Network": ["http://181.119.86.1:8000/play/a01g"],
+    "Nickelodeon": ["http://45.169.163.237:4000/play/a01c"],
+    "HBO": ["http://38.187.3.110:8000/play/a07z/index.m3u8", "http://45.181.120.65:9087/play/128/index.m3u8"]
+};
+
+var currentIdx = 0, playing = false, hls = null;
+var video = document.getElementById('video');
+var menu = document.getElementById('menu');
+var grid = document.getElementById('grid');
+
+function log(msg) {
+    document.getElementById('msg').textContent = msg;
+}
+
+function render() {
+    var html = '';
+    channels.forEach(function(ch, i) {
+        var active = i === currentIdx && playing ? ' active' : '';
+        html += '<div class="channel-card' + active + '" data-idx="' + i + '" onclick="play(' + i + ')">' +
+            '<h3>' + (active ? '<span class="live-dot"></span>' : '') + ch.name + '</h3>' +
+            '<div class="server">' + ch.server + '</div>' +
+        '</div>';
+    });
+    grid.innerHTML = html;
+}
+
+function play(idx) {
+    currentIdx = idx;
+    var ch = channels[idx];
+    log('Reproduciendo: ' + ch.name);
+    render();
+    doPlay(ch.url);
+}
+
+function doPlay(url) {
+    if (hls) { hls.destroy(); hls = null; }
+    video.style.display = 'block';
+    menu.style.display = 'none';
+    
+    if (url.indexOf('.m3u8') > 0 && typeof Hls !== 'undefined') {
+        hls = new Hls({ enableWorker: true, liveSyncDurationCount: 3 });
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            video.play().then(function() {
+                playing = true;
+                log('EN VIVO: ' + channels[currentIdx].name);
+            }).catch(function() { tryBackup(); });
+        });
+        hls.on(Hls.Events.ERROR, function(e, data) {
+            if (data.fatal) tryBackup();
+        });
+    } else {
+        video.src = url;
+        video.play().then(function() {
+            playing = true;
+            log('EN VIVO: ' + channels[currentIdx].name);
+        }).catch(function() { tryBackup(); });
+    }
+}
+
+function tryBackup() {
+    var ch = channels[currentIdx];
+    var backs = BACKUP_URLS[ch.name] || [];
+    var cur = backs.indexOf(channels[currentIdx].url);
+    if (cur >= 0 && backs[cur + 1]) {
+        log('Cambiando source...');
+        setTimeout(function() { doPlay(backs[cur + 1]); }, 1000);
+    } else {
+        log('Sin fuentes disponibles');
+        playing = false;
+    }
+}
+
+function togglePlay() {
+    if (playing) {
+        video.pause();
+        playing = false;
+        log('Pausado');
+    } else {
+        doPlay(channels[currentIdx].url);
+    }
+}
+
+function prevChannel() {
+    currentIdx = (currentIdx - 1 + channels.length) % channels.length;
+    log(channels[currentIdx].name);
+    render();
+    if (playing) doPlay(channels[currentIdx].url);
+}
+
+function nextChannel() {
+    currentIdx = (currentIdx + 1) % channels.length;
+    log(channels[currentIdx].name);
+    render();
+    if (playing) doPlay(channels[currentIdx].url);
+}
+
+document.addEventListener('keydown', function(e) {
+    var k = e.key;
+    if (video.style.display === 'block') {
+        if (k === 'Escape') {
+            video.pause(); video.src = ''; video.style.display = 'none';
+            menu.style.display = 'flex'; if (hls) { hls.destroy(); hls = null; }
+            playing = false; log('Cerrado');
+        }
+        else if (k === ' ') { e.preventDefault(); playing ? video.pause() : video.play(); }
+    } else {
+        if (k === 'ArrowRight' || k === 'ArrowDown') nextChannel();
+        if (k === 'ArrowLeft' || k === 'ArrowUp') prevChannel();
+        if (k === ' ' || k === 'Enter') { e.preventDefault(); play(currentIdx); }
+    }
+});
+
+video.onclick = function() {
+    video.style.display = 'none';
+    menu.style.display = 'flex';
+    if (hls) { hls.destroy(); hls = null; }
+    playing = false;
+};
+
+render();
+</script>
+</body>
+</html>
