@@ -81,6 +81,10 @@ def api_search():
         'total': len(results)
     })
 
+@app.route('/hls.min.js')
+def hls_js():
+    return send_file(os.path.join(os.path.dirname(__file__), 'hls.min.js'))
+
 @app.route('/api/status')
 def api_status():
     return jsonify({'pages': len(channels_cache), 'channels': sum(len(v) for v in channels_cache.values())})
