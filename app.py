@@ -6,36 +6,39 @@ import json
 import cloudscraper
 
 app = Flask(__name__)
-scraper = cloudscraper.create_scraper()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, 'channels_db.json')
+STREAMS_FILE = os.path.join(BASE_DIR, 'streams_cache.json')
 
-channels_db = []
+channels_db = None
+streams_cache = {}
+scraper = cloudscraper.create_scraper()
 
-def load_local_db():
+def load_db():
     global channels_db
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE, 'r') as f:
-            channels_db = json.load(f)
-        print(f'[SOF] Loaded {len(channels_db)} channels from local DB')
-    else:
-        print('[SOF] No local DB found')
+    if channels_db is None:
+        if os.path.exists(DB_FILE):
+            with open(DB_FILE, 'r') as f:
+                channels_db = json.load(f)
+            print(f'[SOF] {len(channels_db)} canales')
+        else:
+            channels_db = []
 
-def get_stream_url(slug_raw, number):
+def get_stream(slug_raw, number):
+    key = f"{slug_raw}|{number}"
+    if key in streams_cache:
+        return streams_cache[key]
+    
     try:
         url = f'https://searchtv.net/stream/line/channel/{slug_raw}/number/{number}/'
         r = scraper.get(url, timeout=10, stream=True, allow_redirects=False)
-        if r.status_code == 200:
-            ct = r.headers.get('content-type', '')
-            if 'mpeg' in ct or 'm3u' in ct:
-                content = r.content.decode('utf-8', errors='ignore')
-                for line in content.split('\n'):
-                    if line.startswith('http') and '.m3u8' in line:
-                        return line.strip()
-                for line in content.split('\n'):
-                    if line.startswith('http'):
-                        return line.strip()
+        if r.status_code == 200 and ('mpeg' in r.headers.get('content-type', '') or 'm3u' in r.headers.get('content-type', '')):
+            content = r.content.decode('utf-8', errors='ignore')
+            for line in content.split('\n'):
+                if line.startswith('http'):
+                    streams_cache[key] = line.strip()
+                    return line.strip()
     except:
         pass
     return None
@@ -56,14 +59,12 @@ def api_search():
     if not q:
         return jsonify({'streams': [], 'total': 0})
     
-    if not channels_db:
-        load_local_db()
+    load_db()
     
     results = []
     for ch in channels_db:
-        name_lower = ch['name'].lower()
-        if q in name_lower:
-            url = get_stream_url(ch['slug_raw'], ch['number'])
+        if q in ch['name'].lower():
+            url = get_stream(ch['slug_raw'], ch['number'])
             if url:
                 title = re.sub(r'\s\[[^\]]+\]', '', ch['name']).strip()
                 results.append({'title': title, 'url': url})
@@ -82,15 +83,20 @@ def api_search():
 
 @app.route('/api/channels')
 def api_channels():
-    if not channels_db:
-        load_local_db()
-    return jsonify({'count': len(channels_db), 'channels': [c['name'] for c in channels_db[:100]]})
+    load_db()
+    return jsonify({'count': len(channels_db)})
 
 @app.route('/api/status')
 def api_status():
-    return jsonify({'loaded': len(channels_db) > 0, 'channels': len(channels_db)})
+    load_db()
+    return jsonify({'loaded': len(channels_db) > 0, 'channels': len(channels_db), 'cached_streams': len(streams_cache)})
+
+@app.route('/api/cached-streams')
+def api_cached_streams():
+    load_db()
+    return jsonify(streams_cache)
 
 if __name__ == '__main__':
-    print('SŌF TV - searchtv.net')
-    load_local_db()
+    print('SŌF TV')
+    load_db()
     app.run(host='0.0.0.0', port=8080)
