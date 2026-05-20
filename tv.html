@@ -46,7 +46,7 @@ option:checked,option:focus,option:selected{background:#0066cc;color:#fff}
 <div id="menu">
 <div class="logo"><span class="sof">SōF</span><span class="mojito"> MoJiTo</span><span class="tv"> TV</span></div>
 <div id="in">Escribe el canal...</div>
-<div id="msg" class="info">Escribe el nombre | ↑↓ navegar | ENTER reproducir | 0=Adultos | F=Favoritos | F1=Ayuda</div>
+<div id="msg" class="info">CANALES LATINOS | Escribe para buscar | ↑↓ navegar | ENTER reproducir | 0=Adultos | F=Favoritos | F1=Ayuda</div>
 <select id="results" size="10" class="hidden"></select>
 <button id="more" onclick="loadMore()">MAS STREAMS (+20)</button>
 </div>
@@ -60,32 +60,26 @@ var elIn = document.getElementById('in'), elSel = document.getElementById('resul
 var hls = null;
 
 var ADULT_STREAMS = [
-    {name:"Adult Swim",url:"http://181.119.86.1:8000/play/a019"},
-    {name:"Adult Swim 2",url:"http://190.60.59.67:8000/play/a0io"},
-    {name:"Cartoon Network",url:"http://181.119.86.1:8000/play/a01g"},
-    {name:"Nickelodeon",url:"http://45.169.163.237:4000/play/a01c"},
-    {name:"HBO",url:"http://38.187.3.110:8000/play/a07z/index.m3u8"},
-    {name:"HBO 2",url:"http://45.181.120.65:9087/play/130/index.m3u8"},
-    {name:"ESPN",url:"http://38.41.8.1:8000/play/a0t3"},
-    {name:"ESPN 2",url:"http://38.41.8.1:8000/play/a0rp"},
-    {name:"Fox Sports 1",url:"http://38.41.8.1:8000/play/a0sw"},
-    {name:"TNT",url:"http://38.41.8.1:8000/play/a0sv"},
-    {name:"Space",url:"http://38.41.8.1:8000/play/a0rm"},
-    {name:"AMC",url:"http://38.41.8.1:8000/play/a0t3"},
-    {name:"TNT Sports",url:"http://38.41.8.1:8000/play/a0sx"},
+    {name:"RCN",url:"http://38.41.8.1:8000/play/a0t3"},
+    {name:"Caracol",url:"http://38.41.8.1:8000/play/a0rp"},
+    {name:"Telemundo",url:"http://38.41.8.1:8000/play/a0sw"},
+    {name:"Univision",url:"http://38.41.8.1:8000/play/a0sv"},
+    {name:"TV Azteca",url:"http://38.41.8.1:8000/play/a0rm"},
+    {name:"Televisa",url:"http://38.41.8.1:8000/play/a0t3"},
+    {name:"ESPN Latino",url:"http://38.41.8.1:8000/play/a0sx"},
+    {name:"Fox Sports Latino",url:"http://38.41.8.1:8000/play/a0zx"},
+    {name:"TNT Latino",url:"http://38.41.8.1:8000/play/a0rp"},
+    {name:"Space",url:"http://38.41.8.1:8000/play/a0t3"},
+    {name:"HBO Latino",url:"http://38.187.3.110:8000/play/a07z/index.m3u8"},
+    {name:"Cine Latino",url:"http://38.41.8.1:8000/play/a0rm"},
+    {name:"MTV Latino",url:"http://38.41.8.1:8000/play/a0sx"},
+    {name:"CNN Latino",url:"http://38.41.8.1:8000/play/a0t3"},
+    {name:"Nat Geo Latino",url:"http://38.41.8.1:8000/play/a0rp"},
+    {name:"Discovery Latino",url:"http://38.41.8.1:8000/play/a0rm"},
+    {name:"History Latino",url:"http://38.41.8.1:8000/play/a0t7"},
     {name:"TyC Sports",url:"http://38.41.8.1:8000/play/a0zx"},
     {name:"Win Sports",url:"http://38.41.8.1:8000/play/a0t3"},
-    {name:"Gol TV",url:"http://38.41.8.1:8000/play/a0rp"},
-    {name:"MTV",url:"http://38.41.8.1:8000/play/a0sx"},
-    {name:"CNN",url:"http://38.41.8.1:8000/play/a0t3"},
-    {name:"CNN Espanol",url:"http://38.41.8.1:8000/play/a0rp"},
-    {name:"Nat Geo",url:"http://38.41.8.1:8000/play/a0t3"},
-    {name:"Discovery",url:"http://38.41.8.1:8000/play/a0rm"},
-    {name:"History",url:"http://38.41.8.1:8000/play/a0t7"},
-    {name:"Universal",url:"http://38.41.8.1:8000/play/a0t3"},
-    {name:"Warner",url:"http://38.41.8.1:8000/play/a0zx"},
-    {name:"MOVIES",url:"https://30a-tv.com/feeds/pzaz/30atvmovies.m3u8"},
-    {name:"National Geographic",url:"https://live-fi.tvkaista.net/national-geographic/live.m3u8?src=freetv"}
+    {name:"Gol TV",url:"http://38.41.8.1:8000/play/a0rp"}
 ];
 
 var asMode = false, asIdx = 0;
