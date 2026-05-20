@@ -7,12 +7,12 @@ import cloudscraper
 app = Flask(__name__)
 scraper = cloudscraper.create_scraper()
 
-channels_db = []
-db_ready = False
+channels_cache = []
+cache_ready = False
 
-def load_channels():
-    global channels_db, db_ready
-    print('[SOF] Loading channels from searchtv.net...')
+def load_all_channels():
+    global channels_cache, cache_ready
+    print('[SOF] Loading channels...')
     
     for page in range(1, 100):
         try:
@@ -30,33 +30,33 @@ def load_channels():
                     slug_raw = m.group(1)
                     number = m.group(2)
                     name = slug_raw.replace('-', ' ').replace('(', '[').replace(')', ']')
-                    channels_db.append({
-                        'slug': slug_raw,
-                        'num': number,
+                    channels_cache.append({
+                        'slug_raw': slug_raw,
+                        'number': number,
                         'name': name
                     })
             
             if page % 5 == 0:
-                print(f'  Page {page}: {len(channels_db)} channels')
+                print(f'  Page {page}: {len(channels_cache)} channels')
         except Exception as e:
             print(f'  Page {page} error: {e}')
             break
     
-    db_ready = True
-    print(f'[SOF] Total: {len(channels_db)} channels')
+    cache_ready = True
+    print(f'[SOF] Total: {len(channels_cache)} channels')
 
-def get_stream(slug, num):
+def get_stream_url(slug_raw, number):
     try:
-        url = f'https://searchtv.net/stream/line/channel/{slug}/number/{num}/'
+        url = f'https://searchtv.net/stream/line/channel/{slug_raw}/number/{number}/'
         r = scraper.get(url, timeout=10, stream=True, allow_redirects=False)
         if r.status_code == 200:
             ct = r.headers.get('content-type', '')
             if 'mpeg' in ct or 'm3u' in ct:
-                txt = r.content.decode('utf-8', errors='ignore')
-                for line in txt.split('\n'):
+                content = r.content.decode('utf-8', errors='ignore')
+                for line in content.split('\n'):
                     if line.startswith('http') and '.m3u8' in line:
                         return line.strip()
-                for line in txt.split('\n'):
+                for line in content.split('\n'):
                     if line.startswith('http'):
                         return line.strip()
     except:
@@ -67,57 +67,61 @@ def get_stream(slug, num):
 def index():
     return send_file(os.path.join(os.path.dirname(__file__), 'tv.html'))
 
+@app.route('/hls.min.js')
+def hls_js():
+    return send_file(os.path.join(os.path.dirname(__file__), 'hls.min.js'))
+
 @app.route('/api/search')
 def api_search():
-    global db_ready
+    global cache_ready
     q = request.args.get('q', '').strip().lower()
+    page = int(request.args.get('page', 1))
     
     if not q:
-        return jsonify({'streams': []})
+        return jsonify({'streams': [], 'total': 0})
     
-    if not db_ready:
-        load_channels()
+    if not cache_ready:
+        load_all_channels()
     
     results = []
-    for ch in channels_db:
-        if q in ch['name'].lower():
-            url = get_stream(ch['slug'], ch['num'])
+    checked = 0
+    
+    for ch in channels_cache:
+        name_lower = ch['name'].lower()
+        if q in name_lower:
+            url = get_stream_url(ch['slug_raw'], ch['number'])
             if url:
                 title = re.sub(r'\s\[[^\]]+\]', '', ch['name']).strip()
                 results.append({'title': title, 'url': url})
-                if len(results) >= 50:
-                    break
+        
+        checked += 1
+        if checked >= 100:
+            break
     
-    results.sort(key=lambda x: 1 if '1080' in x['title'] else 2)
-    return jsonify({'streams': results})
+    results.sort(key=lambda x: 1 if '1080' in x['title'] else (2 if '720' in x['title'] else 3))
+    
+    limit = 20
+    start = (page - 1) * limit
+    chunk = results[start:start + limit]
+    
+    return jsonify({
+        'streams': chunk,
+        'hasMore': start + limit < len(results),
+        'total': len(results)
+    })
 
 @app.route('/api/channels')
 def api_channels():
-    global db_ready
-    if not db_ready:
-        load_channels()
-    return jsonify({'count': len(channels_db), 'loaded': db_ready})
+    global cache_ready
+    if not cache_ready:
+        load_all_channels()
+    return jsonify({'count': len(channels_cache), 'loaded': cache_ready})
 
-@app.route('/api/adult')
-def api_adult():
-    return jsonify({
-        'streams': [
-            {'title': 'Adult Swim', 'url': 'http://181.119.86.1:8000/play/a019'},
-            {'title': 'Adult Swim 2', 'url': 'http://190.60.59.67:8000/play/a0io'},
-            {'title': 'Cartoon Network', 'url': 'http://181.119.86.1:8000/play/a01g'},
-            {'title': 'Nickelodeon', 'url': 'http://45.169.163.237:4000/play/a01c'},
-            {'title': 'HBO', 'url': 'http://38.187.3.110:8000/play/a07z/index.m3u8'},
-            {'title': 'ESPN', 'url': 'http://38.41.8.1:8000/play/a0t3'},
-            {'title': 'ESPN 2', 'url': 'http://38.41.8.1:8000/play/a0rp'},
-            {'title': 'Fox Sports', 'url': 'http://38.41.8.1:8000/play/a0sw'},
-            {'title': 'TNT', 'url': 'http://38.41.8.1:8000/play/a0sv'},
-            {'title': 'CNN', 'url': 'http://38.41.8.1:8000/play/a0t3'},
-            {'title': 'Nat Geo', 'url': 'http://38.41.8.1:8000/play/a0t3'},
-            {'title': 'Movies', 'url': 'https://30a-tv.com/feeds/pzaz/30atvmovies.m3u8'}
-        ]
-    })
+@app.route('/api/status')
+def api_status():
+    return jsonify({'loaded': cache_ready, 'channels': len(channels_cache)})
 
 if __name__ == '__main__':
     print('SŌF TV - searchtv.net')
-    load_channels()
-    app.run(host='0.0.0.0', port=8080)
+    load_all_channels()
+    app.run(host='0.0.0.0', port=8080, threaded=True, debug=False)
