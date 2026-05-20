@@ -3,9 +3,12 @@ from flask import Flask, request, jsonify, send_file
 import os
 import re
 import cloudscraper
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 
 app = Flask(__name__)
 scraper = cloudscraper.create_scraper()
+scraper.mount('https://', HTTPAdapter(max_retries=Retry(total=2, backoff_factor=0.5)))
 
 channels_cache = {}
 
@@ -25,7 +28,7 @@ def get_channels(page=1):
 def get_stream_url(slug_raw, number):
     try:
         url = f'https://searchtv.net/stream/line/channel/{slug_raw}/number/{number}/'
-        r = scraper.get(url, timeout=15, stream=True)
+        r = scraper.get(url, timeout=10, stream=True, allow_redirects=True)
         if r.status_code == 200 and r.headers.get('content-type', '').startswith('application/x-mpeg'):
             content = r.content.decode('utf-8', errors='ignore')
             for line in content.split('\n'):
@@ -39,6 +42,10 @@ def get_stream_url(slug_raw, number):
 def index():
     return send_file(os.path.join(os.path.dirname(__file__), 'tv.html'))
 
+@app.route('/hls.min.js')
+def hls_js():
+    return send_file(os.path.join(os.path.dirname(__file__), 'hls.min.js'))
+
 @app.route('/api/search')
 def api_search():
     q = request.args.get('q', '').strip().lower()
@@ -48,9 +55,9 @@ def api_search():
         return jsonify({'streams': [], 'total': 0})
     
     results = []
+    checked = 0
     
-    # Search pages
-    for p in range(1, 50):
+    for p in range(1, 100):
         links = get_channels(p)
         if not links:
             break
@@ -67,8 +74,14 @@ def api_search():
                     if url:
                         title = re.sub(r'\s*\[[^\]]*\]', '', name).strip()
                         results.append({'title': title, 'url': url})
+                
+                checked += 1
+                if checked >= 100:
+                    break
+        
+        if checked >= 100:
+            break
     
-    # Sort by quality
     results.sort(key=lambda x: 1 if '1080' in x['title'] else (2 if '720' in x['title'] else 3))
     
     limit = 20
@@ -81,13 +94,17 @@ def api_search():
         'total': len(results)
     })
 
-@app.route('/hls.min.js')
-def hls_js():
-    return send_file(os.path.join(os.path.dirname(__file__), 'hls.min.js'))
-
 @app.route('/api/status')
 def api_status():
     return jsonify({'pages': len(channels_cache), 'channels': sum(len(v) for v in channels_cache.values())})
+
+@app.route('/api/load')
+def api_load():
+    for p in range(1, 10):
+        links = get_channels(p)
+        if not links:
+            break
+    return jsonify({'loaded': True, 'channels': sum(len(v) for v in channels_cache.values())})
 
 if __name__ == '__main__':
     print('SŌF TV - searchtv.net')
